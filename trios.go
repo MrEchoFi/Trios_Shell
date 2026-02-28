@@ -302,9 +302,9 @@ func printTriosHelp() {
 
 Type help' to see this list.
 Type '?' to see the Info main menu (aka directory node).
-Type help name' to find out more about the function name'.
-Use info bash' to find out more about the shell in general.
-Use man -k' or info' to find out more about commands not in this list.
+Type 'help' name to find out more about the function name'.
+Use 'info bash' to find out more about the shell in general.
+Use man 'info' to find out more about commands not in this list.
 
 Custom commands:
   triostor [start|stop|status]   Manage Tor anonymity daemon
