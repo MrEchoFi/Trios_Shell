@@ -7,11 +7,11 @@
   <h1>Trios Shell</h1>
    
   <p>
-  
+  A Cybersecurity Frame-work focused shell
   </p>
 
 
-  📫 How to reach me **[Website](https://echo-fi-portfolio-node-js.vercel.app/)** ,  **http://mrechofi.github.io/Tanjib_portfolio_website/** &
+  📫 How to reach me **[Website 1 ](https://echo-fi-portfolio-node-js.vercel.app/)** ,  **[Website 2](http://mrechofi.github.io/Tanjib_portfolio_website/)** &
  **tanjibisham777@gmail.com & tanjibisham888@gmail.com**
 </div>
 
@@ -26,6 +26,18 @@ https://github.com/user-attachments/assets/1db616a8-91bf-43c1-ba11-7baa6bac8bf0
 
 # Installation Process
 
-      git clone 
-      cd
+      git clone https://github.com/MrEchoFi/Trios_Shell.git
+      cd Trios_Shell
       go run trios.go
+
+
+# NOTE:
+- If you know how to use kali terminal then it is a best choice for you.
+[~] It contains in-build ->
+- Tor anonymity as 'triostor'
+- File Scan via 'scan'
+- It contains secure-input for -> if any malware or keylogger is in your pc or laptop then the attacker can capture your terminal keystrokes. So, for this security it contains
+IN-BUILD 'secureinput' but still this feature is in model train condition.
+
+# Yoho:
+     you can contribute in this repo via adding features & finding bug.
