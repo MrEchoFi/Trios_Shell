@@ -1,341 +1,304 @@
-
-
 // A custom “Trios terminal” shell for cybersecurity professionals.
 
-//
 package main
 
 import (
- "bufio"
- "fmt"
- //"io"
- "os"
- "os/exec"
- "os/signal"
- "strings"
- "syscall"
-  "github.com/peterh/liner"
+	"bufio"
+	"fmt"
+
+	//"io"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/peterh/liner"
 )
 
 var torProcess *os.Process = nil
 
 func main() {
- printLogo()
- signalhandler()
+	printLogo()
+	signalhandler()
 
-    line := liner.NewLiner()
-    defer line.Close()
-    line.SetCtrlCAborts(true) // Allow Ctrl+C to abort input
+	line := liner.NewLiner()
+	defer line.Close()
+	line.SetCtrlCAborts(true) // Allow Ctrl+C to abort input
 
- for {
-  // Display prompt
-  //fmt.Print("Trios> ")
- cwd, _ := os.Getwd()
-  home, _ := os.UserHomeDir()
-  displayCwd := cwd
-  if strings.HasPrefix(cwd, home) {
-    displayCwd = "~" + cwd[len(home):]
-  }
-  // Bluish color: \033[34m (bright blue), reset: \033[0m
- prompt := fmt.Sprintf("\033[1;34m[~]Trios~%s>\033[0m ", displayCwd)
- fmt.Print(prompt)
- input, err := line.Prompt("")
-        if err == liner.ErrPromptAborted {
-            fmt.Println("^C")
-            continue
-        }
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-            break
-        }
-        input = strings.TrimSpace(input)
-        if input == "" {
-            continue
-        }
-        line.AppendHistory(input)
+	for {
+		// Display prompt
+		//fmt.Print("Trios> ")
+		cwd, _ := os.Getwd()
+		home, _ := os.UserHomeDir()
+		displayCwd := cwd
+		if strings.HasPrefix(cwd, home) {
+			displayCwd = "~" + cwd[len(home):]
+		}
+		// Bluish color: \033[34m (bright blue), reset: \033[0m
+		prompt := fmt.Sprintf("\033[1;34m[~]Trios~%s>\033[0m ", displayCwd)
+		fmt.Print(prompt)
+		input, err := line.Prompt("")
+		if err == liner.ErrPromptAborted {
+			fmt.Println("^C")
+			continue
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+			break
+		}
+		input = strings.TrimSpace(input)
+		if input == "" {
+			continue
+		}
+		line.AppendHistory(input)
 
-  // Handle built-in “exit”
-  if input == "exit" || input == "quit" {
-   break
-  }
+		// Handle built-in “exit”
+		if input == "exit" || input == "quit" {
+			break
+		}
 
-  // Parse first word to decide if it’s a custom command
-  fields := strings.Fields(input)
-  cmdName := fields[0]
+		// Parse first word to decide if it’s a custom command
+		fields := strings.Fields(input)
+		cmdName := fields[0]
 
-  switch cmdName {
-  case "triostor":
-   // triostor start | stop | status
-   handleTriosTor(fields[1:])
+		switch cmdName {
+		case "triostor":
+			// triostor start | stop | status
+			handleTriosTor(fields[1:])
 
-  case "sandbox":
-   // sandbox <command...>
-   if len(fields) < 2 {
-    fmt.Println("Usage: sandbox <command...>")
-    continue
-   }
-   Sandbox(fields[1:])
+		case "sandbox":
+			// sandbox <command...>
+			if len(fields) < 2 {
+				fmt.Println("Usage: sandbox <command...>")
+				continue
+			}
+			Sandbox(fields[1:])
 
-  case "scan":
-   // scan <path...>
-   if len(fields) < 2 {
-    fmt.Println("Usage: scan <path...>")
-    continue
-   }
-   handleScan(fields[1:])
+		case "scan":
+			// scan <path...>
+			if len(fields) < 2 {
+				fmt.Println("Usage: scan <path...>")
+				continue
+			}
+			handleScan(fields[1:])
 
-  case "secureinput":
-   // Secure input stub: hides echo while typing
-   handleSecureInput()
+		case "secureinput":
+			// Secure input stub: hides echo while typing
+			handleSecureInput()
 
-   if len(fields) < 2 {
-      fmt.Println("Usage: sandbox <command...>")
-      continue
-    }
-    Sandbox(fields[1:])
+			if len(fields) < 2 {
+				fmt.Println("Usage: sandbox <command...>")
+				continue
+			}
+			Sandbox(fields[1:])
 
-	case "cd":
-    if len(fields) < 2 {
-      fmt.Println("Usage: cd <directory>")
-      continue
-    }
-    if err := os.Chdir(fields[1]); err != nil {
-      fmt.Fprintf(os.Stderr, "cd error: %v\n", err)
-    }
-    continue
+		case "cd":
+			if len(fields) < 2 {
+				fmt.Println("Usage: cd <directory>")
+				continue
+			}
+			if err := os.Chdir(fields[1]); err != nil {
+				fmt.Fprintf(os.Stderr, "cd error: %v\n", err)
+			}
+			continue
 
-  case "help":
-   printTriosHelp() // <-- trios help cmd added
+		case "help":
+			printTriosHelp() // <-- trios help cmd added
 
-  case "?":
- questionmark()
+		case "?":
+			questionmark()
 
-  default:
-   // All other commands get passed directly to Bash
-   runbash(input)
-  }
- }
+		default:
+			// All other commands get passed directly to Bash
+			runbash(input)
+		}
+	}
 
- fmt.Println("~ Goodbye from Trios ~")
- //fmt.Printf("\033[1;34mTrios~%s>\033[0m ", displayCwd)
+	fmt.Println("~ Goodbye from Trios ~")
+	//fmt.Printf("\033[1;34mTrios~%s>\033[0m ", displayCwd)
 
 }
 
 // printLogo prints a simple ASCII art banner for Trios Terminal.
 func printLogo() {
- logo := `
-   
-       
-  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  
- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  
-  XXXXXXXXXX                 XXXXXXXXXXXXXXXXXXXXXX               XXXXXXXXXX   
-   XXXXXXXXXX                XXXXXXXXXXXXXXXXXXXXXX              XXXXXXXXXX    
-    XXXXXXXXXXXXXX           XXXXXXXXXXXXXXXXXXXXXX         XXXXXXXXXXXXXX     
-     XXXXXXXXXXXX                  XXXXXXXXXXX               XXXXXXXXXXXX      
-      XXXXXXXXXX                   XXXXXXXXXXX                XXXXXXXXXX       
-       XXXXXXXX                    XXXXXXXXXXX                 XXXXXXXX        
-        XXXXXX                     XXXXXXXXXXX                  XXXXXX         
-         XXXX                      XXXXXXXXXXX                   XXXX          
-          XX                       XXXXXXXXXXX                    XX           
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                   XXXXXXXXXXX                                 
-                                     XXXXXXX                                   
-                                      XXXXX                                    
-                                       XXX                                     
-                                        X                                      
-               
-
-                                      Trios Terminal
-                     (A Cybersecurity‐Focused Shell_Ebwer Community)
+	logo := `___________      .__               _________.__           .____    .____     
+\__    ___/______|__| ____  ______/   _____/|  |__   ____ |    |   |    |    
+  |    |  \_  __ \  |/  _ \/  ___/\_____  \ |  |  \_/ __ \|    |   |    |    
+  |    |   |  | \/  (  <_> )___ \ /        \|   Y  \  ___/|    |___|    |___ 
+  |____|   |__|  |__|\____/____  >_______  /|___|  /\___  >_______ \_______ \
+                               \/        \/      \/     \/        \/       \/
+                                Trios Shell
+                 (A Cybersecurity‐Focused Shell_@MrEchoFi)
                      
 `
- fmt.Println("\033[1;36m" + logo + "\033[0m")
+	fmt.Println("\033[1;36m" + logo + "\033[0m")
 }
 
 // setupSignalHandler catches SIGINT (Ctrl+C) and ignores it, so the shell
 // does not exit on Ctrl+C. Child processes (Bash, tor, etc.) still see Ctrl+C.
 func signalhandler() {
- c := make(chan os.Signal, 1)
- signal.Notify(c, syscall.SIGINT)
- go func() {
-  for {
-   <-c
-   // simply ignore and re-print prompt on next loop
-  }
- }()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT)
+	go func() {
+		for {
+			<-c
+			// simply ignore and re-print prompt on next loop
+		}
+	}()
 }
 
 // runBash executes whatever the user typed by passing it to /bin/bash -c "<input>".
 // Standard input, output, and error are directly tied to the terminal.
 
 func runbash(input string) {
- cmd := exec.Command("/bin/bash", "-c", input)
- cmd.Stdin = os.Stdin
- cmd.Stdout = os.Stdout
- cmd.Stderr = os.Stderr
+	cmd := exec.Command("/bin/bash", "-c", input)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
- if err := cmd.Run(); err != nil {
-  fmt.Fprintf(os.Stderr, "Error: %v\n", err)
- }
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	}
 }
 
 // handleTriosTor manages “triostor start|stop|status” commands.
 func handleTriosTor(args []string) {
- if len(args) == 0 {
-  fmt.Println("Usage: triostor [start|stop|status]")
-  return
- }
+	if len(args) == 0 {
+		fmt.Println("Usage: triostor [start|stop|status]")
+		return
+	}
 
- switch args[0] {
- case "start":
-  if torProcess != nil {
-   fmt.Println("» Tor is already running.")
-   return
-  }
-  fmt.Println("» Starting Tor…")
-  cmd := exec.Command("tor")
-  // Allow Tor to print to this terminal's stdout/stderr
-  cmd.Stdout = os.Stdout
-  cmd.Stderr = os.Stderr
-  if err := cmd.Start(); err != nil {
-   fmt.Fprintf(os.Stderr, "Failed to start Tor: %v\n", err)
-   return
-  }
-  torProcess = cmd.Process
-  fmt.Printf("» Tor started (PID %d).  Configure your apps to use SOCKS5 127.0.0.1:9050\n", torProcess.Pid)
+	switch args[0] {
+	case "start":
+		if torProcess != nil {
+			fmt.Println("» Tor is already running.")
+			return
+		}
+		fmt.Println("» Starting Tor…")
+		cmd := exec.Command("tor")
+		// Allow Tor to print to this terminal's stdout/stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to start Tor: %v\n", err)
+			return
+		}
+		torProcess = cmd.Process
+		fmt.Printf("» Tor started (PID %d).  Configure your apps to use SOCKS5 127.0.0.1:9050\n", torProcess.Pid)
 
- case "stop":
-  if torProcess == nil {
-   fmt.Println("» Tor is not running.")
-   return
-  }
-  fmt.Printf("» Stopping Tor (PID %d)…\n", torProcess.Pid)
-  if err := torProcess.Kill(); err != nil {
-   fmt.Fprintf(os.Stderr, "Failed to kill Tor: %v\n", err)
-  } else {
-   fmt.Println("» Tor stopped.")
-  }
-  torProcess = nil
+	case "stop":
+		if torProcess == nil {
+			fmt.Println("» Tor is not running.")
+			return
+		}
+		fmt.Printf("» Stopping Tor (PID %d)…\n", torProcess.Pid)
+		if err := torProcess.Kill(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to kill Tor: %v\n", err)
+		} else {
+			fmt.Println("» Tor stopped.")
+		}
+		torProcess = nil
 
- case "status":
-  if torProcess == nil {
-   fmt.Println("» Tor is not running.")
-  } else {
-   fmt.Printf("» Tor is running (PID %d).\n", torProcess.Pid)
-  }
+	case "status":
+		if torProcess == nil {
+			fmt.Println("» Tor is not running.")
+		} else {
+			fmt.Printf("» Tor is running (PID %d).\n", torProcess.Pid)
+		}
 
- default:
-  fmt.Println("Usage: triostor [start|stop|status]")
- }
+	default:
+		fmt.Println("Usage: triostor [start|stop|status]")
+	}
 }
-
 
 // handleSandbox runs the given command inside a Docker container named kali:latest
 // mounting the current directory to /workspace in the container. Adjust the image name as needed.
 func Sandbox(args []string) {
- // Example: sandbox nmap -A 10.0.0.1
- // becomes: docker run --rm -it -v $(pwd):/workspace -w /workspace kali:latest bash -c "nmap -A 10.0.0.1"
- pwd, err := os.Getwd()
- if err != nil {
-  fmt.Fprintf(os.Stderr, "Cannot get current directory: %v\n", err)
-  return
- }
+	// Example: sandbox nmap -A 10.0.0.1
+	// becomes: docker run --rm -it -v $(pwd):/workspace -w /workspace kali:latest bash -c "nmap -A 10.0.0.1"
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot get current directory: %v\n", err)
+		return
+	}
 
- // Reconstruct the inner command
- innerCmd := strings.Join(args, " ")
- dockerArgs := []string{
-  "run", "--rm", "-it",
-  "-v", pwd + ":/workspace",
-  "-w", "/workspace",
-  "kali:latest",          // ← make sure you have a kali:latest image, or change it to one you prefer
-  "bash", "-c", innerCmd,
- }
+	// Reconstruct the inner command
+	innerCmd := strings.Join(args, " ")
+	dockerArgs := []string{
+		"run", "--rm", "-it",
+		"-v", pwd + ":/workspace",
+		"-w", "/workspace",
+		"kali:latest", // ← make sure you have a kali:latest image, or change it to one you prefer
+		"bash", "-c", innerCmd,
+	}
 
- fmt.Printf("» Launching sandbox: docker %s\n", strings.Join(dockerArgs, " "))
- cmd := exec.Command("docker", dockerArgs...)
- cmd.Stdin = os.Stdin
- cmd.Stdout = os.Stdout
- cmd.Stderr = os.Stderr
+	fmt.Printf("» Launching sandbox: docker %s\n", strings.Join(dockerArgs, " "))
+	cmd := exec.Command("docker", dockerArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
- if err := cmd.Run(); err != nil {
-  fmt.Fprintf(os.Stderr, "Sandbox error: %v\n", err)
- }
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Sandbox error: %v\n", err)
+	}
 }
 
 // handleScan invokes ClamAV’s clamscan -r <paths…>. It requires clamscan to be installed.
 func handleScan(paths []string) {
- args := append([]string{"-r"}, paths...)
- cmd := exec.Command("clamscan", args...)
- cmd.Stdout = os.Stdout
- cmd.Stderr = os.Stderr
+	args := append([]string{"-r"}, paths...)
+	cmd := exec.Command("clamscan", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
- fmt.Printf("» Running clamscan -r %s\n", strings.Join(paths, " "))
- if err := cmd.Run(); err != nil {
-  fmt.Fprintf(os.Stderr, "clamscan error (non-zero exit is normal if viruses found): %v\n", err)
- }
+	fmt.Printf("» Running clamscan -r %s\n", strings.Join(paths, " "))
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "clamscan error (non-zero exit is normal if viruses found): %v\n", err)
+	}
 }
 
 // handleSecureInput toggles “stty -echo” so that the user’s typing is not echoed.
 // This is a minimal stub to “hide” keystrokes (an anti-keylogger placeholder).
 func handleSecureInput() {
- // Turn off echo
- cmdOff := exec.Command("stty", "-echo")
- cmdOff.Stdin = os.Stdin
- if err := cmdOff.Run(); err != nil {
-  fmt.Fprintf(os.Stderr, "Error disabling echo: %v\n", err)
-  return
- }
+	// Turn off echo
+	cmdOff := exec.Command("stty", "-echo")
+	cmdOff.Stdin = os.Stdin
+	if err := cmdOff.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error disabling echo: %v\n", err)
+		return
+	}
 
- fmt.Print("Password (input hidden): ")
- reader := bufio.NewReader(os.Stdin)
- _, _ = reader.ReadString('\n') // read entire line, but don’t show it
+	fmt.Print("Password (input hidden): ")
+	reader := bufio.NewReader(os.Stdin)
+	_, _ = reader.ReadString('\n') // read entire line, but don’t show it
 
- // Turn echo back on
- cmdOn := exec.Command("stty", "echo")
- cmdOn.Stdin = os.Stdin
- if err := cmdOn.Run(); err != nil {
-  fmt.Fprintf(os.Stderr, "Error re-enabling echo: %v\n", err)
-  return
- }
+	// Turn echo back on
+	cmdOn := exec.Command("stty", "echo")
+	cmdOn.Stdin = os.Stdin
+	if err := cmdOn.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error re-enabling echo: %v\n", err)
+		return
+	}
 
- fmt.Println() // newline after password prompt
- fmt.Println("» Input captured securely (echo was off).")
+	fmt.Println() // newline after password prompt
+	fmt.Println("» Input captured securely (echo was off).")
 }
 
 func GitClone(args []string) {
-  repoURL := args[0]
-  fmt.Printf("» Cloning repository: %s\n", repoURL)
-  cmd := exec.Command("git", "clone", repoURL)
-  cmd.Stdout = os.Stdout
-  cmd.Stderr = os.Stderr
-  if err := cmd.Run(); err != nil {
-    fmt.Fprintf(os.Stderr, "git clone error: %v\n", err)
-  }
+	repoURL := args[0]
+	fmt.Printf("» Cloning repository: %s\n", repoURL)
+	cmd := exec.Command("git", "clone", repoURL)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "git clone error: %v\n", err)
+	}
 }
 
 func printTriosHelp() {
- fmt.Println(`Trios Terminal - A Cybersecurity-Focused Shell
+	fmt.Println(`Trios Terminal - A Cybersecurity-Focused Shell
 
- Copyright (C) 2025 Ebwer Community_Md Abu Naser Nayeem
+ Copyright (C) 2025 MrEchoFI_Md Abu Naser Nayeem
 
 Type help' to see this list.
 Type '?' to see the Info main menu (aka directory node).
@@ -393,8 +356,8 @@ Custom commands:
 }
 
 func questionmark() {
-    fmt.Println(
-`This is the Info main menu (aka directory node).
+	fmt.Println(
+		`This is the Info main menu (aka directory node).
 A few useful Info commands:
 
   'q' quits;
